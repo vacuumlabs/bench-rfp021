@@ -1,0 +1,28 @@
+[package]
+name = "helios-check-steps"
+version = "0.1.0"
+edition = "2021"
+
+# The committee update split into three programs, as three LEZ transactions
+# would run it: Helios's rules (patched, no signature) + blst for the BLS step.
+[dependencies]
+risc0-zkvm.workspace = true
+helios-consensus-core.workspace = true
+alloy-primitives.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+blst = "0.3.16"
+sha2-010 = { package = "sha2", version = "0.10" }
+ssz = { package = "ethereum_ssz", version = "0.9" }
+
+[[bin]]
+name = "step1"
+path = "src/bin/step1.rs"
+
+[[bin]]
+name = "step2"
+path = "src/bin/step2.rs"
+
+[[bin]]
+name = "step3"
+path = "src/bin/step3.rs"

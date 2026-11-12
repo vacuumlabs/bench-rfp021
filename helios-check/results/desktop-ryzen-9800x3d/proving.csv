@@ -1,0 +1,7 @@
+program,input,total_cycles,user_cycles,segments,prove_s,receipt_bytes,peak_rss_mib
+inclusion,results/inputs/inclusion_tx250_log0_logs1.bin,524288,337327,1,91.0,493624,4690
+step3,results/inputs/handoff_step3.bin,4194304,3651176,4,417.0,1125860,9391
+step2,results/inputs/handoff_step2.bin,4718592,4241653,5,458.5,1412292,9392
+step1,results/inputs/handoff_step1.bin,11534336,10322528,11,1097.2,3110596,9400
+step1,results/inputs/finality_only_step1.bin,10485760,9607629,10,991.9,2829284,9410
+inclusion,results/inputs/inclusion_tx194_log21_logs300.bin,13631488,12560440,13,1324.7,3882616,9399

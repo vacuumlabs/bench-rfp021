@@ -1,0 +1,174 @@
+diff --git a/ethereum/consensus-core/src/consensus_core.rs b/ethereum/consensus-core/src/consensus_core.rs
+index 78264b1..4ba5929 100644
+--- a/ethereum/consensus-core/src/consensus_core.rs
++++ b/ethereum/consensus-core/src/consensus_core.rs
+@@ -14,13 +14,15 @@ use crate::consensus_spec::ConsensusSpec;
+ use crate::errors::ConsensusError;
+ use crate::proof::{
+     is_current_committee_proof_valid, is_execution_block_hash_proof_valid,
+-    is_execution_payload_proof_valid, is_finality_proof_valid, is_next_committee_proof_valid,
++    is_execution_payload_proof_valid, is_finality_proof_valid, is_next_committee_root_proof_valid,
+ };
+ use crate::types::bls::Signature;
+ use crate::types::{
+-    BeaconBlockHeader, Bootstrap, FinalityUpdate, Forks, GenericUpdate, LightClientHeader,
+-    LightClientStore, OptimisticUpdate, Update,
++    Bootstrap, FinalityUpdate, Forks, GenericUpdate, LightClientHeader, LightClientStore,
++    OptimisticUpdate, SyncCommittee, Update,
+ };
++#[cfg(test)]
++use crate::types::BeaconBlockHeader;
+ use crate::utils::{
+     calculate_fork_version, compute_committee_sign_root, compute_fork_data_root,
+     get_participating_aggregate_pubkey,
+@@ -252,6 +254,45 @@ pub fn verify_generic_update<S: ConsensusSpec>(
+     genesis_root: B256,
+     forks: &Forks,
+ ) -> Result<()> {
++    let input = verify_generic_update_without_signature::<S>(
++        update,
++        expected_current_slot,
++        store,
++        genesis_root,
++        forks,
++        |committee: &SyncCommittee<S>| committee.tree_hash_root(),
++    )?;
++
++    let agg_pk = get_participating_aggregate_pubkey(input.committee, input.bits)?;
++    if !input.signature.verify(input.signing_root.as_slice(), &agg_pk) {
++        return Err(ConsensusError::InvalidSignature.into());
++    }
++
++    Ok(())
++}
++
++/// What the sync-committee signature check needs once every other rule of an
++/// update has passed: the signing committee, who signed, the signature and the
++/// signing root. Lets a caller run the BLS step separately, for example with a
++/// different library or in a later transaction.
++pub struct SignatureInput<'a, S: ConsensusSpec> {
++    pub committee: &'a SyncCommittee<S>,
++    pub bits: &'a ssz_types::BitVector<S::SyncCommitteeSize>,
++    pub signature: &'a Signature,
++    pub signing_root: B256,
++}
++
++/// Every check of [`verify_generic_update`] except the BLS signature, which the
++/// caller must still verify over the returned [`SignatureInput`].
++/// `committee_root` computes the SSZ root of a supplied next sync committee.
++pub fn verify_generic_update_without_signature<'a, S: ConsensusSpec>(
++    update: &'a GenericUpdate<S>,
++    expected_current_slot: u64,
++    store: &'a LightClientStore<S>,
++    genesis_root: B256,
++    forks: &Forks,
++    committee_root: impl Fn(&SyncCommittee<S>) -> B256,
++) -> Result<SignatureInput<'a, S>> {
+     let bits = get_bits::<S>(&update.sync_aggregate.sync_committee_bits);
+     if bits == 0 {
+         return Err(ConsensusError::InsufficientParticipation.into());
+@@ -334,9 +375,9 @@ pub fn verify_generic_update<S: ConsensusSpec>(
+             return Err(ConsensusError::InvalidNextSyncCommitteeProof.into());
+         }
+         if let Some(next_sync_committee_branch) = &update.next_sync_committee_branch {
+-            let is_valid = is_next_committee_proof_valid(
++            let is_valid = is_next_committee_root_proof_valid(
+                 update.attested_header.beacon(),
+-                next_sync_committee,
++                committee_root(next_sync_committee),
+                 next_sync_committee_branch,
+                 update_attested_epoch,
+                 forks,
+@@ -356,25 +397,16 @@ pub fn verify_generic_update<S: ConsensusSpec>(
+         store.next_sync_committee.as_ref().unwrap()
+     };
+ 
+-    let agg_pk = get_participating_aggregate_pubkey(
+-        sync_committee,
+-        &update.sync_aggregate.sync_committee_bits,
+-    )?;
+-
+     let fork_version = calculate_fork_version::<S>(forks, update.signature_slot.saturating_sub(1));
+     let fork_data_root = compute_fork_data_root(fork_version, genesis_root);
+-    let is_valid_sig = verify_sync_committee_signature(
+-        &agg_pk,
+-        update.attested_header.beacon(),
+-        &update.sync_aggregate.sync_committee_signature,
+-        fork_data_root,
+-    );
+-
+-    if !is_valid_sig {
+-        return Err(ConsensusError::InvalidSignature.into());
+-    }
+-
+-    Ok(())
++    let header_root = update.attested_header.beacon().tree_hash_root();
++
++    Ok(SignatureInput {
++        committee: sync_committee,
++        bits: &update.sync_aggregate.sync_committee_bits,
++        signature: &update.sync_aggregate.sync_committee_signature,
++        signing_root: compute_committee_sign_root(header_root, fork_data_root),
++    })
+ }
+ 
+ /// WARNING: `force_update` allows Helios to accept a header with less than a quorum of signatures.
+@@ -498,17 +530,6 @@ fn has_finality_update<S: ConsensusSpec>(update: &GenericUpdate<S>) -> bool {
+     update.finality_branch.is_some()
+ }
+ 
+-fn verify_sync_committee_signature(
+-    aggregate_public_key: &bls12_381::G1Affine,
+-    attested_header: &BeaconBlockHeader,
+-    signature: &Signature,
+-    fork_data_root: B256,
+-) -> bool {
+-    let header_root = attested_header.tree_hash_root();
+-    let signing_root = compute_committee_sign_root(header_root, fork_data_root);
+-    signature.verify(signing_root.as_slice(), aggregate_public_key)
+-}
+-
+ fn safety_threshold<S: ConsensusSpec>(store: &LightClientStore<S>) -> u64 {
+     cmp::max(
+         store.current_max_active_participants,
+diff --git a/ethereum/consensus-core/src/proof.rs b/ethereum/consensus-core/src/proof.rs
+index 1a6b2df..3835ed2 100644
+--- a/ethereum/consensus-core/src/proof.rs
++++ b/ethereum/consensus-core/src/proof.rs
+@@ -37,6 +37,24 @@ pub fn is_next_committee_proof_valid<S: ConsensusSpec>(
+     next_committee_branch: &[B256],
+     current_epoch: u64,
+     forks: &Forks,
++) -> bool {
++    is_next_committee_root_proof_valid(
++        attested_header,
++        next_committee.tree_hash_root(),
++        next_committee_branch,
++        current_epoch,
++        forks,
++    )
++}
++
++/// As [`is_next_committee_proof_valid`], for a committee root the caller has
++/// already computed (for example with a faster SSZ hash of the same keys).
++pub fn is_next_committee_root_proof_valid(
++    attested_header: &BeaconBlockHeader,
++    next_committee_root: B256,
++    next_committee_branch: &[B256],
++    current_epoch: u64,
++    forks: &Forks,
+ ) -> bool {
+     let (index, depth) = if current_epoch >= forks.gloas.epoch {
+         (898, 11)
+@@ -46,9 +64,9 @@ pub fn is_next_committee_proof_valid<S: ConsensusSpec>(
+         (23, 5)
+     };
+ 
+-    is_proof_valid(
++    is_root_proof_valid(
+         attested_header.state_root,
+-        next_committee,
++        next_committee_root,
+         next_committee_branch,
+         depth,
+         index,

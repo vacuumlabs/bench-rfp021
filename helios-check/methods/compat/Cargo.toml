@@ -1,0 +1,18 @@
+[package]
+name = "helios-check-compat"
+version = "0.1.0"
+edition = "2021"
+
+# Build-only check: Helios consensus-core and blst alongside LEZ v0.4.0-rc3's
+# lee_core in one RISC Zero guest, the way a LEZ program would depend on them.
+[[bin]]
+name = "compat"
+path = "src/main.rs"
+
+[dependencies]
+risc0-zkvm.workspace = true
+helios-consensus-core.workspace = true
+blst = "0.3.16"
+lee_core = { git = "https://github.com/logos-blockchain/logos-execution-zone", tag = "v0.4.0-rc3" }
+borsh = "1.5.7"
+serde_json.workspace = true

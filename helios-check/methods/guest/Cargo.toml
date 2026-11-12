@@ -1,0 +1,21 @@
+[package]
+name = "helios-check-guest"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "check"
+path = "src/main.rs"
+
+[dependencies]
+risc0-zkvm.workspace = true
+helios-consensus-core.workspace = true
+bls12_381.workspace = true
+alloy-primitives.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2 = "0.9"
+tree_hash = "0.10"
+# RISC Zero's accelerated fork of supranational blst (what Sextant uses for every curve operation).
+blst = "0.3.16"
+sha2-010 = { package = "sha2", version = "0.10" }

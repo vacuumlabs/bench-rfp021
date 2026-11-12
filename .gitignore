@@ -1,0 +1,6 @@
+target/
+helios-patched/
+helios-check/results/inputs/
+helios-check/results/logs/
+helios-check/results/*.csv
+*.ssz

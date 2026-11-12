@@ -1,0 +1,19 @@
+[package]
+name = "helios-check-inclusion"
+version = "0.1.0"
+edition = "2021"
+
+# The consumer's step: prove an event log is in a finalized block's receipts
+# (Merkle-Patricia proof with alloy-trie) and check a deposit predicate on it.
+[[bin]]
+name = "inclusion"
+path = "src/main.rs"
+
+[dependencies]
+risc0-zkvm.workspace = true
+alloy-primitives = { workspace = true, features = ["tiny-keccak"] }
+alloy-trie = "0.9"
+alloy-rlp = "0.3"
+alloy-consensus = { version = "2.5", default-features = false }
+alloy-eips = { version = "2.5", default-features = false }
+serde.workspace = true
