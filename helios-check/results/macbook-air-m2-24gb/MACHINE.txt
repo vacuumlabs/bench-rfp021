@@ -1,0 +1,14 @@
+Machine:  MacBook Air (Mac14,2), 2022
+CPU:      Apple M2, 8 cores (4 performance + 4 efficiency), 8 threads
+RAM:      24 GB unified memory
+OS:       macOS 26.3.1 (25D2128)
+Power:    mains (AC) for the whole proving run; caffeinate -i kept the machine awake
+Prover:   CPU (RISC0_DEV_MODE=0); user time ~7.5x wall time, i.e. all 8 cores busy
+Toolchain: cargo-risczero 3.0.5, r0vm 3.0.5, risc0 rust 1.97.0, cpp 2024.1.5
+Date:     2026-11-13
+
+Notes:
+- All six proofs succeeded; no out-of-memory. Peak RSS 12.2 GiB (step2), others 7.3-9.4 GiB.
+- Proving is 1.27-1.37x slower than the desktop reference (Ryzen 7 9800X3D).
+- steps.csv cycle counts match the desktop reference except step1 input_decode,
+  566 cycles lower here (~0.005%); probably guest toolchain differences.
