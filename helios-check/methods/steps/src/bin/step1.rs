@@ -1,5 +1,7 @@
 //! Step 1: every Helios rule except the signature, then the BLS preparation
-//! (signers' key, signature decode, hash to G2) with blst.
+//! (signers' key, signature decode, hash to G2) with blst. The keys for the
+//! signers' key can be supplied uncompressed (`Step1In::supplied_keys`), so a
+//! non-signer costs a curve check instead of a decompression.
 #![no_main]
 use alloy_primitives::B256;
 use helios_check_steps::{Job, Step1In};
@@ -61,36 +63,68 @@ pub fn main() {
     let t2 = c();
 
     // BLS preparation with blst.
-    let job = unsafe { prepare(&si) };
+    let (job, signers_key) = unsafe { prepare(&si, i.supplied_keys.as_deref()) };
     let t3 = c();
-    env::commit(&(job, vec![("input_decode", t1 - t0), ("helios_rules", t2 - t1), ("bls_prepare", t3 - t2)]));
+    env::commit(&(
+        job,
+        vec![("input_decode", t1 - t0), ("helios_rules", t2 - t1), ("bls_prepare", t3 - t2), ("signers_key", signers_key)],
+    ));
 }
 
-unsafe fn prepare(si: &helios_consensus_core::SignatureInput<S>) -> Job {
+/// Returns the job and the cycles spent on the signers' key (part of the BLS
+/// preparation).
+unsafe fn prepare(si: &helios_consensus_core::SignatureInput<S>, supplied: Option<&[u8]>) -> (Job, u64) {
     use blst::*;
     const DST: &[u8] = b"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_";
+    let k0 = env::cycle_count();
     let committee = si.committee.as_ssz_bytes();
-    let key = |b: &[u8]| {
+    // Member n's key as the committee commits to it; n = 512 is the aggregate key.
+    let committed = |n: usize| &committee[n * 48..n * 48 + 48];
+    let mut supplied = supplied.map(|keys| {
+        assert!(keys.len() % 96 == 0, "supplied keys are 96 bytes each");
+        keys.chunks_exact(96)
+    });
+    // Member n's key as a point. A supplied key only has to be on the curve and
+    // compress to the committed key: compression is one-to-one on the curve, so
+    // it is the committed point, and committee keys are in G1 (each passed
+    // KeyValidate at deposit; the aggregate is their sum). Without supplied
+    // keys, decompress and subgroup-check the committed key.
+    let mut key = |n: usize| {
         let mut a = blst_p1_affine::default();
-        assert!(blst_p1_uncompress(&mut a, b.as_ptr()) == BLST_ERROR::BLST_SUCCESS);
-        assert!(blst_p1_affine_in_g1(&a));
+        match supplied.as_mut() {
+            Some(keys) => {
+                let bytes = keys.next().expect("fewer keys supplied than the update needs");
+                assert!(blst_p1_deserialize(&mut a, bytes.as_ptr()) == BLST_ERROR::BLST_SUCCESS, "supplied key is not on the curve");
+                let mut compressed = [0u8; 48];
+                blst_p1_affine_compress(compressed.as_mut_ptr(), &a);
+                assert!(compressed[..] == *committed(n), "supplied key {n} is not the committee's");
+            }
+            None => {
+                assert!(blst_p1_uncompress(&mut a, committed(n).as_ptr()) == BLST_ERROR::BLST_SUCCESS);
+                assert!(blst_p1_affine_in_g1(&a));
+            }
+        }
         a
     };
     // Signers' key: committee aggregate minus non-signers. Quorum (2/3) is
     // enforced when the update is applied, as in Helios.
     let mut pk = blst_p1::default();
-    blst_p1_from_affine(&mut pk, &key(&committee[512 * 48..]));
+    blst_p1_from_affine(&mut pk, &key(512));
     for (n, signed) in si.bits.iter().enumerate() {
         if !signed {
             let mut q = blst_p1::default();
-            blst_p1_from_affine(&mut q, &key(&committee[n * 48..n * 48 + 48]));
+            blst_p1_from_affine(&mut q, &key(n));
             blst_p1_cneg(&mut q, true);
             blst_p1_add_or_double(&mut pk, &pk, &q);
         }
     }
+    if let Some(mut rest) = supplied {
+        assert!(rest.next().is_none(), "more keys supplied than the update needs");
+    }
     let mut pk_a = blst_p1_affine::default();
     blst_p1_to_affine(&mut pk_a, &pk);
     assert!(!blst_p1_affine_is_inf(&pk_a));
+    let signers_key = env::cycle_count() - k0;
     // Signature: decode and subgroup check.
     let mut s = blst_p2_affine::default();
     assert!(blst_p2_uncompress(&mut s, si.signature.as_ssz_bytes().as_ptr()) == BLST_ERROR::BLST_SUCCESS);
@@ -105,5 +139,5 @@ unsafe fn prepare(si: &helios_consensus_core::SignatureInput<S>) -> Job {
     blst_p1_affine_serialize(pk_b.as_mut_ptr(), &pk_a);
     blst_p2_affine_serialize(s_b.as_mut_ptr(), &s);
     blst_p2_affine_serialize(h_b.as_mut_ptr(), &h_a);
-    Job { pk: pk_b.to_vec(), sig: s_b.to_vec(), hm: h_b.to_vec() }
+    (Job { pk: pk_b.to_vec(), sig: s_b.to_vec(), hm: h_b.to_vec() }, signers_key)
 }

@@ -2447,6 +2447,7 @@ dependencies = [
  "alloy-primitives",
  "alloy-rlp",
  "alloy-trie",
+ "blst",
  "ethereum_ssz 0.9.1",
  "helios-check-methods",
  "helios-check-steps",

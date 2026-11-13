@@ -1,7 +1,7 @@
 //! Shared input/output types for the three update steps.
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Step1In {
     pub finalized_header_json: String,
     pub current_committee_ssz: Vec<u8>,
@@ -11,6 +11,12 @@ pub struct Step1In {
     pub expected_current_slot: u64,
     pub genesis_root: [u8; 32],
     pub forks_json: String,
+    /// The keys step 1 aggregates, supplied uncompressed by whoever submits the
+    /// update, so step 1 decompresses none: the signing committee's aggregate
+    /// key, then each non-signer's key in committee order, 96 bytes each (blst
+    /// affine serialization). Step 1 checks that each is on the curve and
+    /// compresses to the committee's key. `None`: step 1 decompresses them.
+    pub supplied_keys: Option<Vec<u8>>,
 }
 
 /// What step 1 leaves for step 2 (in a LEZ program: a job account).
