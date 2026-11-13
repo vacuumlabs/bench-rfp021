@@ -1,35 +1,17 @@
-//! Step 2: the Miller loop of e(pk, H(m)) * e(-G1, sig), from step 1's job.
-//! Both pairs share one loop (blst_miller_loop_n), which costs less than two
-//! loops and a multiplication; the output is the same Fp12 element.
+//! Step 2: the Miller loop of e(pk, H(m)) * e(-G1, sig), from step 1's job
+//! (`helios_check_steps::step2`).
 #![no_main]
-use helios_check_steps::{Job, Miller};
+use helios_check_steps::Job;
 use risc0_zkvm::guest::env;
 
 risc0_zkvm::guest::entry!(main);
 
 pub fn main() {
-    use blst::*;
     let c = env::cycle_count;
     let t0 = c();
     let j: Job = env::read();
     let t1 = c();
-    let f = unsafe {
-        let (mut pk, mut s, mut h) = (blst_p1_affine::default(), blst_p2_affine::default(), blst_p2_affine::default());
-        assert!(blst_p1_deserialize(&mut pk, j.pk.as_ptr()) == BLST_ERROR::BLST_SUCCESS);
-        assert!(blst_p2_deserialize(&mut s, j.sig.as_ptr()) == BLST_ERROR::BLST_SUCCESS);
-        assert!(blst_p2_deserialize(&mut h, j.hm.as_ptr()) == BLST_ERROR::BLST_SUCCESS);
-        let mut g = blst_p1::default();
-        blst_p1_from_affine(&mut g, &*blst_p1_affine_generator());
-        blst_p1_cneg(&mut g, true);
-        let mut g_a = blst_p1_affine::default();
-        blst_p1_to_affine(&mut g_a, &g);
-        let qs: [*const blst_p2_affine; 2] = [&h, &s];
-        let ps: [*const blst_p1_affine; 2] = [&pk, &g_a];
-        let mut f = blst_fp12::default();
-        blst_miller_loop_n(&mut f, qs.as_ptr(), ps.as_ptr(), 2);
-        f
-    };
+    let miller = helios_check_steps::step2(&j).unwrap();
     let t2 = c();
-    let bytes = unsafe { core::slice::from_raw_parts(&f as *const _ as *const u8, core::mem::size_of_val(&f)) }.to_vec();
-    env::commit(&(Miller { f: bytes }, vec![("input_decode", t1 - t0), ("miller_loop", t2 - t1)]));
+    env::commit(&(miller, vec![("input_decode", t1 - t0), ("miller_loop", t2 - t1)]));
 }
