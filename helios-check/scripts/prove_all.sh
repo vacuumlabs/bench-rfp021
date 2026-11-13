@@ -11,9 +11,16 @@ echo "program,input,total_cycles,user_cycles,segments,prove_s,receipt_bytes,peak
 run() {
   local prog=$1 input=$2 log line rss
   log=results/logs/$(basename "$input" .bin).log
-  /usr/bin/time -v ./target/release/helios-check prove "$prog" "$input" > "$log" 2>&1
+  if [ "$(uname)" = Darwin ]; then
+    # BSD time: -l reports peak RSS in bytes
+    /usr/bin/time -l ./target/release/helios-check prove "$prog" "$input" > "$log" 2>&1
+    rss=$(awk '/maximum resident set size/ {print int($1/1048576)}' "$log")
+  else
+    # GNU time: -v reports peak RSS in KiB
+    /usr/bin/time -v ./target/release/helios-check prove "$prog" "$input" > "$log" 2>&1
+    rss=$(awk '/Maximum resident set size/ {print int($6/1024)}' "$log")
+  fi
   line=$(grep '^PROVED' "$log")
-  rss=$(awk '/Maximum resident set size/ {print int($6/1024)}' "$log")
   echo "$line peak_rss_mib=$rss"
   echo "$line" | sed -E "s/^PROVED ([^ ]+) ([^ ]+) total_cycles=([0-9]+) user_cycles=([0-9]+) segments=([0-9]+) prove_s=([0-9.]+) receipt_bytes=([0-9]+)/\1,\2,\3,\4,\5,\6,\7,$rss/" >> "$out"
 }
