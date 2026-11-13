@@ -8,6 +8,8 @@ v0.4.0-rc3 uses. No Logos/LEZ knowledge is needed to run anything here.
 - `helios-check/`: the harness. `RESULTS.md` explains every number.
 - `helios-patch/`: our two-hook patch to a16z/helios (run every light-client rule except
   the BLS signature; take a caller-computed committee root). `setup.sh` applies it.
+- `helios-check/equivalence/`: unpatched Helios, patched Helios and the three steps must
+  agree on every update (`cargo test -p equivalence -- --nocapture`; no zkVM).
 - `helios-check/results/desktop-ryzen-9800x3d/`: our reference results (AMD Ryzen 7 9800X3D,
   8 cores / 16 threads, 15 GiB, CPU proving).
 - `helios-check/fixtures/mainnet-now/`: Ethereum mainnet light-client data and one block's

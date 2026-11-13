@@ -72,10 +72,10 @@ Work cycles (in-guest counters, harness input decoding excluded):
 
 | Step | Handoff | Finality only |
 |---|---|---|
-| 1: Helios rules + committee root + signers' key, signature decode, hash to G2 | 4.35M (rules 1.92M, BLS prep 2.43M) | 2.78M (rules 0.35M, BLS prep 2.43M) |
+| 1: Helios rules + committee root + signers' key, signature decode, hash to G2 | 4.34M (rules 1.91M, BLS prep 2.43M) | 2.78M (rules 0.35M, BLS prep 2.43M) |
 | 2: Miller loop, both pairs in one loop | 3.27M | 3.27M |
 | 3: Final exponentiation | 3.58M | 3.58M |
-| **Total** | **11.20M** | **9.63M** |
+| **Total** | **11.19M** | **9.62M** |
 
 Step 2 runs both pairs through one Miller loop (`blst_miller_loop_n`). Two loops and a
 multiplication cost 4.10M; the output is the same, byte for byte.
@@ -107,13 +107,13 @@ Step 1 work cycles (in-guest counters, harness input decoding excluded):
 
 | Non-signers | Handoff, decompressed | Handoff, supplied | Finality only, decompressed | Finality only, supplied | Keys supplied |
 |---|---|---|---|---|---|
-| 0 | 4.35M | 3.91M | 2.78M | 2.34M | 96 B |
-| 17 | 11.98M | 4.09M | 10.41M | 2.52M | 1.7 KB |
-| 170 | 80.63M | **5.69M** | 79.06M | **4.12M** | 16.4 KB |
+| 0 | 4.34M | 3.91M | 2.78M | 2.34M | 96 B |
+| 17 | 11.97M | 4.09M | 10.41M | 2.52M | 1.7 KB |
+| 170 | 80.64M | **5.70M** | 79.07M | **4.13M** | 16.4 KB |
 
-- A non-signer costs 0.449M decompressed and 0.010M supplied (the check plus the point
+- A non-signer costs 0.449M decompressed and 0.011M supplied (the check plus the point
   subtraction both ways pay). Supplying the aggregate key saves another 0.44M on every update.
-- At the floor the largest step is step 1 of a handoff update, 5.69M. Steps 2 and 3 don't
+- At the floor the largest step is step 1 of a handoff update, 5.70M. Steps 2 and 3 don't
   change (3.27M and 3.58M), so a whole update is 12.5M across the three transactions.
 - In both modes about 0.28M of the signers' key goes to copying the committee into bytes and
   walking the 512 participation bits.
@@ -122,6 +122,30 @@ Step 1 work cycles (in-guest counters, harness input decoding excluded):
   input as borsh bytes instead.
 
 `step-inputs` still runs step 1 without supplied keys, so its results and inputs are unchanged.
+
+## Equivalence: unpatched Helios, patched Helios, the three steps
+
+`equivalence/` runs every update natively four ways: unpatched Helios (a16z/helios at
+`2922a47` as published, a git dependency), patched Helios, and the three steps (the
+`helios_check_steps` code the guests run) once decompressing the signers' keys and once with
+them supplied. Every verdict must equal unpatched Helios's, error message included, and the
+stores must stay the same after each update. `cargo test -p equivalence -- --nocapture` lists
+every case and its verdict.
+
+| Cases | Count | Verdict, all four ways |
+|---|---|---|
+| Helios's own sync tests (its `testdata`, Capella to Gloas, minimal preset) | 17 tests, 57 updates, 7 forced updates | all accepted |
+| consensus-specs v1.7.0-beta.2 sync tests (`scripts/fetch-spec-tests.sh`, then `CONSENSUS_SPEC_TESTS=… cargo test -p equivalence -- --include-ignored`) | 33 tests, 111 updates, 15 forced updates | all accepted |
+| Mainnet: the period-1908 update and finality update from the bootstrap, and each update of periods 1900–1908 from the store the previous period's update leaves | 11 updates | all accepted |
+| Tampered copies of those: a signature byte changed, the identity as the signature, a participation bit flipped, a finality branch node changed, a next committee branch node changed, another next committee | 64 | all rejected, for the same reason |
+| The period-1908 update and finality update re-signed with 0, 17 and 170 non-signers, and at 170 with a participation bit flipped | 8 | 6 accepted, 2 rejected |
+
+The sync tests contain only valid updates, so the rejections come from the tampered copies.
+Step 1 also refuses wrong supplied keys: another member's key, a point off the curve, one
+key too many, one too few, and a key cut short.
+
+To have unpatched Helios alongside, the workspace depends on patched Helios by path
+(`../helios-patched`) instead of patching the git source.
 
 ## Real proving (RISC0_DEV_MODE=0, CPU prover, AMD Ryzen 7 9800X3D, 8 cores / 16 threads, 15 GiB)
 
