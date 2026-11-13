@@ -72,9 +72,12 @@ Work cycles (in-guest counters, harness input decoding excluded):
 | Step | Handoff | Finality only |
 |---|---|---|
 | 1: Helios rules + committee root + signers' key, signature decode, hash to G2 | 4.35M (rules 1.92M, BLS prep 2.43M) | 2.78M (rules 0.35M, BLS prep 2.43M) |
-| 2: Miller loop | 4.10M | 4.10M |
+| 2: Miller loop, both pairs in one loop | 3.27M | 3.27M |
 | 3: Final exponentiation | 3.58M | 3.58M |
-| **Total** | **12.03M** | **10.46M** |
+| **Total** | **11.20M** | **9.63M** |
+
+Step 2 runs both pairs through one Miller loop (`blst_miller_loop_n`). Two loops and a
+multiplication cost 4.10M; the output is the same, byte for byte.
 
 Step 1's harness input decoding adds 5.9M (handoff) / 6.8M: risc0 serde spends one
 32-bit word per byte of the 25 KB committees, and the header and update arrive as JSON.
@@ -89,7 +92,7 @@ crates pinned to LEZ v0.4.0-rc3's lock (risc0-zkvm 3.0.5, circuits 4.0.x). Raw: 
 |---|---|---|---|
 | Deposit-log inclusion, typical receipt (428 B) | 0.52M (1) | **91 s** | 4.6 GiB |
 | Step 3, final exponentiation | 4.19M (4) | 417 s | 9.2 GiB |
-| Step 2, Miller loop | 4.72M (5) | 459 s | 9.2 GiB |
+| Step 2, Miller loop (two loops; one shared loop is now 3.67M, 4 segments) | 4.72M (5) | 459 s | 9.2 GiB |
 | Step 1, handoff, *incl. 5.9M harness decoding* | 11.53M (11) | 1,097 s | 9.2 GiB |
 | Step 1, finality only, *incl. 6.8M harness decoding* | 10.49M (10) | 992 s | 9.2 GiB |
 | Deposit-log inclusion, heavy receipt (47 KB, 300 logs) | 13.63M (13) | 1,325 s | 9.2 GiB |
