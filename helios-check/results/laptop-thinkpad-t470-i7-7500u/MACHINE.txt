@@ -1,0 +1,39 @@
+Machine
+  Lenovo ThinkPad T470 (20HD000DMH), laptop from 2017
+  CPU: Intel Core i7-7500U (Kaby Lake), 2 cores / 4 threads, 2.7 GHz base, 3.5 GHz turbo, 4 MiB L3, AVX2
+       ran at about 2.8 GHz on all cores, about 74 C, no throttling seen
+  RAM: 22.5 GiB usable, 979 MiB swap
+  OS:  Ubuntu 26.04.1 LTS, Linux 7.0.0-43-generic, native (not WSL)
+  Power: mains, battery full; power profile "balanced"; sleep and lid close inhibited during the run
+
+Toolchain
+  r0vm and cargo-risczero 3.0.5 (rzup 0.6.0), CPU prover, RISC0_DEV_MODE=0
+  Guests built with RISC Zero Rust 1.97.0. Rust 1.91.1 (the r0.1.91.1 builder LEZ
+  pins) fails: alloy 2.5 requires rustc 1.94.1. Host: Rust 1.98.1 (rust-toolchain.toml).
+  steps.csv matches desktop-ryzen-9800x3d/steps.csv in every work counter and
+  segment count (step 1 input decoding differs by 219 cycles), so the same
+  programs were proven.
+
+Conditions
+  Not an idle machine: a desktop session with Firefox open. The proofs got
+  304-313% CPU out of 400% (load average about 9). Read the times as a laptop in
+  use, not a clean benchmark.
+
+Scope: 2 of the 6 proofs, then stopped
+  At this speed the full run takes about 11 hours, so it was stopped after
+  step 3. Times for the rest are derived below, not measured.
+
+Measured (proving.csv)
+  program                           segments  prove_s   desktop   ratio  peak RSS
+  inclusion, typical receipt (428 B)  1 (2^19)    898        91     9.9x  4.6 GiB
+  step 3, final exponentiation        4 (2^20)  3,717       417     8.9x  9.2 GiB
+
+  929 s per 2^20 segment (step 3), against about 100 s on the desktop.
+  Peak memory matches the desktop: it is set by the segment size, not the program.
+
+Derived: segments x 929 s
+  step 2, Miller loop                  5 segments   about 4,650 s (77 min)
+  step 1, handoff (with harness decoding)  11       about 10,200 s (2.8 h)
+  step 1, finality only (same)         10           about 9,300 s (2.6 h)
+  inclusion, heavy receipt (47 KB)     13           about 12,100 s (3.4 h)
+  step 1 without harness decoding      about 5      about 4,650 s (77 min)
