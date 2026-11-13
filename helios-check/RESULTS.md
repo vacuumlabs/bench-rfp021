@@ -72,10 +72,10 @@ Work cycles (in-guest counters, harness input decoding excluded):
 
 | Step | Handoff | Finality only |
 |---|---|---|
-| 1: Helios rules + committee root + signers' key, signature decode, hash to G2 | 4.35M (rules 1.92M, BLS prep 2.43M) | 2.78M (rules 0.35M, BLS prep 2.43M) |
+| 1: Helios rules + committee root + signers' key, signature decode, hash to G2 | 4.34M (rules 1.91M, BLS prep 2.43M) | 2.78M (rules 0.35M, BLS prep 2.43M) |
 | 2: Miller loop, both pairs in one loop | 3.27M | 3.27M |
 | 3: Final exponentiation | 3.58M | 3.58M |
-| **Total** | **11.20M** | **9.63M** |
+| **Total** | **11.19M** | **9.62M** |
 
 Step 2 runs both pairs through one Miller loop (`blst_miller_loop_n`). Two loops and a
 multiplication cost 4.10M; the output is the same, byte for byte.
@@ -107,13 +107,13 @@ Step 1 work cycles (in-guest counters, harness input decoding excluded):
 
 | Non-signers | Handoff, decompressed | Handoff, supplied | Finality only, decompressed | Finality only, supplied | Keys supplied |
 |---|---|---|---|---|---|
-| 0 | 4.35M | 3.91M | 2.78M | 2.34M | 96 B |
-| 17 | 11.98M | 4.09M | 10.41M | 2.52M | 1.7 KB |
-| 170 | 80.63M | **5.69M** | 79.06M | **4.12M** | 16.4 KB |
+| 0 | 4.34M | 3.91M | 2.78M | 2.34M | 96 B |
+| 17 | 11.97M | 4.09M | 10.41M | 2.52M | 1.7 KB |
+| 170 | 80.64M | **5.70M** | 79.07M | **4.13M** | 16.4 KB |
 
-- A non-signer costs 0.449M decompressed and 0.010M supplied (the check plus the point
+- A non-signer costs 0.449M decompressed and 0.011M supplied (the check plus the point
   subtraction both ways pay). Supplying the aggregate key saves another 0.44M on every update.
-- At the floor the largest step is step 1 of a handoff update, 5.69M. Steps 2 and 3 don't
+- At the floor the largest step is step 1 of a handoff update, 5.70M. Steps 2 and 3 don't
   change (3.27M and 3.58M), so a whole update is 12.5M across the three transactions.
 - In both modes about 0.28M of the signers' key goes to copying the committee into bytes and
   walking the 512 participation bits.
