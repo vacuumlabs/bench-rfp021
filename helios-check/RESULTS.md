@@ -54,9 +54,10 @@ decoding), so compare with Sextant's guest-level 11.2M / 12.6M, not its 13.4M ga
   could be offered upstream to a16z/helios.
 - **Dependencies are fine:** `methods/compat` builds Helios, blst and LEZ v0.4.0-rc3 `lee_core`
   together into one RISC Zero guest (444 KB ELF), answering Sextant's dependency-tree concern.
-- **Non-signers:** today's mainnet has 0–2 per update (last 10 periods), so cost is flat. At
-  the 2/3 floor (170 non-signers) step 1 would grow by about 77M and not fit; the design needs
-  either supplied uncompressed keys (what Sextant and Affidavit do) or an extra aggregation step.
+- **Non-signers:** today's mainnet has 0–2 per update (last 10 periods), so cost is flat.
+  Decompressing their keys, step 1 grows by 0.45M per non-signer, to 80.6M at the 2/3 floor
+  (170 non-signers). With the keys supplied uncompressed (what Sextant and Affidavit do), it
+  stays at 5.7M; see "Step 1 with many non-signers" below.
 
 
 ## The split, run for real (patched Helios + blst, mainnet Fulu data)
@@ -72,13 +73,55 @@ Work cycles (in-guest counters, harness input decoding excluded):
 | Step | Handoff | Finality only |
 |---|---|---|
 | 1: Helios rules + committee root + signers' key, signature decode, hash to G2 | 4.35M (rules 1.92M, BLS prep 2.43M) | 2.78M (rules 0.35M, BLS prep 2.43M) |
-| 2: Miller loop | 4.10M | 4.10M |
+| 2: Miller loop, both pairs in one loop | 3.27M | 3.27M |
 | 3: Final exponentiation | 3.58M | 3.58M |
-| **Total** | **12.03M** | **10.46M** |
+| **Total** | **11.20M** | **9.63M** |
+
+Step 2 runs both pairs through one Miller loop (`blst_miller_loop_n`). Two loops and a
+multiplication cost 4.10M; the output is the same, byte for byte.
 
 Step 1's harness input decoding adds 5.9M (handoff) / 6.8M: risc0 serde spends one
 32-bit word per byte of the 25 KB committees, and the header and update arrive as JSON.
 A LEZ program reads the committee from account data instead, so this is not program cost.
+
+## Step 1 with many non-signers
+
+Today's mainnet updates have 0–2 non-signers. To see the floor, `helios-check nonsigners
+fixtures/mainnet-now` re-signs both fixture updates with a generated 512-key committee,
+which replaces the store's signing committee, with 0, 17 and 170 members not signing. 170 is
+the most the 2/3 supermajority allows (342 × 3 ≥ 512 × 2). Helios accepts every re-signed
+update natively, and all three steps run, with step 3 accepting the signature. Step 1 also
+refuses wrong supplied keys: another member's key, a point off the curve, one key too few and
+one too many. Raw: `results/nonsigners.csv`.
+
+Step 1 runs two ways:
+- **Keys decompressed**, as before: the committee's aggregate key and each non-signer's key
+  are decompressed and subgroup-checked.
+- **Keys supplied**: whoever submits the update also supplies the aggregate key and the
+  non-signers' keys uncompressed (`Step1In::supplied_keys`, 96 bytes each). Step 1 checks
+  that each is on the curve and compresses to the committee's key: no square root, no
+  subgroup check. Compression is one-to-one on the curve, so the point is the committed key,
+  and committee keys are in G1 (each passed KeyValidate at deposit; the aggregate is their sum).
+
+Step 1 work cycles (in-guest counters, harness input decoding excluded):
+
+| Non-signers | Handoff, decompressed | Handoff, supplied | Finality only, decompressed | Finality only, supplied | Keys supplied |
+|---|---|---|---|---|---|
+| 0 | 4.35M | 3.91M | 2.78M | 2.34M | 96 B |
+| 17 | 11.98M | 4.09M | 10.41M | 2.52M | 1.7 KB |
+| 170 | 80.63M | **5.69M** | 79.06M | **4.12M** | 16.4 KB |
+
+- A non-signer costs 0.449M decompressed and 0.010M supplied (the check plus the point
+  subtraction both ways pay). Supplying the aggregate key saves another 0.44M on every update.
+- At the floor the largest step is step 1 of a handoff update, 5.69M. Steps 2 and 3 don't
+  change (3.27M and 3.58M), so a whole update is 12.5M across the three transactions.
+- In both modes about 0.28M of the signers' key goes to copying the committee into bytes and
+  walking the 512 participation bits.
+- The supplied keys add 16.4 KB to step 1's input at the floor, about 1.9M more harness
+  decoding through risc0 serde. The session total there is 13.5M; a LEZ program receives its
+  input as borsh bytes instead.
+
+`step-inputs` still runs step 1 without supplied keys, so its results and inputs are unchanged.
 
 ## Real proving (RISC0_DEV_MODE=0, CPU prover, AMD Ryzen 7 9800X3D, 8 cores / 16 threads, 15 GiB)
 
@@ -89,7 +132,7 @@ crates pinned to LEZ v0.4.0-rc3's lock (risc0-zkvm 3.0.5, circuits 4.0.x). Raw: 
 |---|---|---|---|
 | Deposit-log inclusion, typical receipt (428 B) | 0.52M (1) | **91 s** | 4.6 GiB |
 | Step 3, final exponentiation | 4.19M (4) | 417 s | 9.2 GiB |
-| Step 2, Miller loop | 4.72M (5) | 459 s | 9.2 GiB |
+| Step 2, Miller loop (two loops; one shared loop is now 3.67M, 4 segments) | 4.72M (5) | 459 s | 9.2 GiB |
 | Step 1, handoff, *incl. 5.9M harness decoding* | 11.53M (11) | 1,097 s | 9.2 GiB |
 | Step 1, finality only, *incl. 6.8M harness decoding* | 10.49M (10) | 992 s | 9.2 GiB |
 | Deposit-log inclusion, heavy receipt (47 KB, 300 logs) | 13.63M (13) | 1,325 s | 9.2 GiB |

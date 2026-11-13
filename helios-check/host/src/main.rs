@@ -83,6 +83,7 @@ fn main() {
     match args.get(1).map(String::as_str) {
         Some("step-inputs") => return steps::make_inputs(&args[2], &args[3]),
         Some("prove") => return steps::prove(&args[2], &args[3]),
+        Some("nonsigners") => return steps::nonsigners(&args[2]),
         _ => {}
     }
     if args.get(1).map(String::as_str) == Some("inclusion") {

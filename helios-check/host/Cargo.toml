@@ -18,3 +18,5 @@ alloy-trie = "0.9"
 alloy-rlp = "0.3"
 helios-check-steps = { path = "../methods/steps" }
 ssz = { package = "ethereum_ssz", version = "0.9" }
+# Signs the synthetic updates of `nonsigners`.
+blst = "0.3.16"

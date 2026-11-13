@@ -1,4 +1,6 @@
-//! Step 2: the two Miller loops, e(pk, H(m)) * e(-G1, sig), from step 1's job.
+//! Step 2: the Miller loop of e(pk, H(m)) * e(-G1, sig), from step 1's job.
+//! Both pairs share one loop (blst_miller_loop_n), which costs less than two
+//! loops and a multiplication; the output is the same Fp12 element.
 #![no_main]
 use helios_check_steps::{Job, Miller};
 use risc0_zkvm::guest::env;
@@ -21,10 +23,10 @@ pub fn main() {
         blst_p1_cneg(&mut g, true);
         let mut g_a = blst_p1_affine::default();
         blst_p1_to_affine(&mut g_a, &g);
-        let (mut f1, mut f2, mut f) = (blst_fp12::default(), blst_fp12::default(), blst_fp12::default());
-        blst_miller_loop(&mut f1, &h, &pk);
-        blst_miller_loop(&mut f2, &s, &g_a);
-        blst_fp12_mul(&mut f, &f1, &f2);
+        let qs: [*const blst_p2_affine; 2] = [&h, &s];
+        let ps: [*const blst_p1_affine; 2] = [&pk, &g_a];
+        let mut f = blst_fp12::default();
+        blst_miller_loop_n(&mut f, qs.as_ptr(), ps.as_ptr(), 2);
         f
     };
     let t2 = c();
