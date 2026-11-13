@@ -1996,6 +1996,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "equivalence"
+version = "0.1.0"
+dependencies = [
+ "alloy-primitives",
+ "blst",
+ "ethereum_ssz 0.9.1",
+ "helios-check-steps",
+ "helios-consensus-core 0.12.0",
+ "helios-consensus-core 0.12.0 (git+https://github.com/a16z/helios?rev=2922a475ef1b48476983333cbae7fc92fdb46cd6)",
+ "hex",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "sha2 0.10.9",
+ "snap",
+ "tree_hash 0.10.0",
+]
+
+[[package]]
 name = "equivalent"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2008,7 +2027,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e35d6e78f4cebb90e51d543db8fe41528851d6deeef6ef21ebd4bfdc1e784776"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2451,7 +2470,7 @@ dependencies = [
  "ethereum_ssz 0.9.1",
  "helios-check-methods",
  "helios-check-steps",
- "helios-consensus-core",
+ "helios-consensus-core 0.12.0",
  "hex",
  "risc0-zkvm",
  "serde",
@@ -2466,7 +2485,7 @@ version = "0.1.0"
 dependencies = [
  "blst",
  "borsh",
- "helios-consensus-core",
+ "helios-consensus-core 0.12.0",
  "lee_core",
  "risc0-zkvm",
  "serde_json",
@@ -2479,7 +2498,7 @@ dependencies = [
  "alloy-primitives",
  "bls12_381",
  "blst",
- "helios-consensus-core",
+ "helios-consensus-core 0.12.0",
  "risc0-zkvm",
  "serde",
  "serde_json",
@@ -2515,7 +2534,7 @@ dependencies = [
  "alloy-primitives",
  "blst",
  "ethereum_ssz 0.9.1",
- "helios-consensus-core",
+ "helios-consensus-core 0.12.0",
  "risc0-zkvm",
  "serde",
  "serde_json",
@@ -2525,6 +2544,30 @@ dependencies = [
 [[package]]
 name = "helios-consensus-core"
 version = "0.12.0"
+dependencies = [
+ "alloy",
+ "alloy-rlp",
+ "bls12_381",
+ "ethereum_ssz 0.9.1",
+ "ethereum_ssz_derive 0.9.1",
+ "eyre",
+ "getrandom 0.2.17",
+ "serde",
+ "sha2 0.9.9",
+ "ssz_types",
+ "superstruct",
+ "thiserror 1.0.69",
+ "tracing",
+ "tree_hash 0.10.0",
+ "tree_hash_derive 0.10.0",
+ "typenum",
+ "wasmtimer",
+]
+
+[[package]]
+name = "helios-consensus-core"
+version = "0.12.0"
+source = "git+https://github.com/a16z/helios?rev=2922a475ef1b48476983333cbae7fc92fdb46cd6#2922a475ef1b48476983333cbae7fc92fdb46cd6"
 dependencies = [
  "alloy",
  "alloy-rlp",
@@ -3779,7 +3822,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -4390,7 +4433,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -4671,6 +4714,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_yaml"
+version = "0.9.34+deprecated"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6a8b1a1a2ebf674015cc02edccce75287f1a0130d394307b36743c2f5d504b47"
+dependencies = [
+ "indexmap 2.14.2",
+ "itoa",
+ "ryu",
+ "serde",
+ "unsafe-libyaml",
+]
+
+[[package]]
 name = "serdect"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4780,6 +4836,12 @@ checksum = "149309498a5f7334b12ddae0cad8aba81ce785fe91755068867e017cf98fee46"
 dependencies = [
  "serde",
 ]
+
+[[package]]
+name = "snap"
+version = "1.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "199905e6153d6405f9728fe44daace35f8f837bbf830bb6e85fbd5828709a886"
 
 [[package]]
 name = "socket2"
@@ -5008,7 +5070,7 @@ dependencies = [
  "getrandom 0.4.3",
  "once_cell",
  "rustix",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -5412,6 +5474,12 @@ name = "unicode-xid"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
+
+[[package]]
+name = "unsafe-libyaml"
+version = "0.2.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "673aac59facbab8a9007c7f6108d11f63b603f7cabff99fabf650fea5c32b861"
 
 [[package]]
 name = "untrusted"

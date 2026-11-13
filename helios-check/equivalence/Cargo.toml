@@ -1,0 +1,25 @@
+[package]
+name = "equivalence"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Unpatched Helios, patched Helios and the three steps, run natively on the
+# same updates; see src/lib.rs. `cargo test -p equivalence -- --nocapture`
+# lists every case and its verdict.
+[dependencies]
+# Patched: this workspace's Helios (../helios-patched).
+helios-consensus-core.workspace = true
+# Unpatched: a16z/helios at the same commit, as published.
+helios-upstream = { package = "helios-consensus-core", git = "https://github.com/a16z/helios", rev = "2922a475ef1b48476983333cbae7fc92fdb46cd6" }
+helios-check-steps = { path = "../methods/steps" }
+alloy-primitives.workspace = true
+blst = "0.3.16"
+hex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml = "0.9.34"
+sha2 = "0.10"
+snap = "1"
+ssz = { package = "ethereum_ssz", version = "0.9" }
+tree_hash = "0.10"

@@ -123,6 +123,30 @@ Step 1 work cycles (in-guest counters, harness input decoding excluded):
 
 `step-inputs` still runs step 1 without supplied keys, so its results and inputs are unchanged.
 
+## Equivalence: unpatched Helios, patched Helios, the three steps
+
+`equivalence/` runs every update natively four ways: unpatched Helios (a16z/helios at
+`2922a47` as published, a git dependency), patched Helios, and the three steps (the
+`helios_check_steps` code the guests run) once decompressing the signers' keys and once with
+them supplied. Every verdict must equal unpatched Helios's, error message included, and the
+stores must stay the same after each update. `cargo test -p equivalence -- --nocapture` lists
+every case and its verdict.
+
+| Cases | Count | Verdict, all four ways |
+|---|---|---|
+| Helios's own sync tests (its `testdata`, Capella to Gloas, minimal preset) | 17 tests, 57 updates, 7 forced updates | all accepted |
+| consensus-specs v1.7.0-beta.2 sync tests (`scripts/fetch-spec-tests.sh`, then `CONSENSUS_SPEC_TESTS=… cargo test -p equivalence -- --include-ignored`) | 33 tests, 111 updates, 15 forced updates | all accepted |
+| Mainnet: the period-1908 update and finality update from the bootstrap, and each update of periods 1900–1908 from the store the previous period's update leaves | 11 updates | all accepted |
+| Tampered copies of those: a signature byte changed, the identity as the signature, a participation bit flipped, a finality branch node changed, a next committee branch node changed, another next committee | 64 | all rejected, for the same reason |
+| The period-1908 update and finality update re-signed with 0, 17 and 170 non-signers, and at 170 with a participation bit flipped | 8 | 6 accepted, 2 rejected |
+
+The sync tests contain only valid updates, so the rejections come from the tampered copies.
+Step 1 also refuses wrong supplied keys: another member's key, a point off the curve, one
+key too many, one too few, and a key cut short.
+
+To have unpatched Helios alongside, the workspace depends on patched Helios by path
+(`../helios-patched`) instead of patching the git source.
+
 ## Real proving (RISC0_DEV_MODE=0, CPU prover, AMD Ryzen 7 9800X3D, 8 cores / 16 threads, 15 GiB)
 
 Each proof ran in its own process; peak memory is that process's maximum RSS. RISC Zero
