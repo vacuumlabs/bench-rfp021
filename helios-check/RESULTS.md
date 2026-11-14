@@ -169,6 +169,27 @@ Sextant reports 691 s / 544 s / 477 s for its three steps on an Apple M4 Pro CPU
 Receipt sizes in the CSV are composite receipts (about 280 KB per segment). A transaction
 would carry a succinct receipt instead (about 225 KB per LEZ's cycle_bench); not measured here.
 
+## Real proving on laptops
+
+Same six inputs, same `prove_all.sh`, run by colleagues; cycle counts match the desktop's
+(step 1 `input_decode` differs by a few hundred cycles, from the guest toolchain). Raw:
+`results/macbook-air-m2-24gb/`, `results/laptop-thinkpad-t470-i7-7500u/`.
+
+| Program | Desktop (9800X3D) | MacBook Air M2, 24 GB | ThinkPad T470, i7-7500U |
+|---|---|---|---|
+| Inclusion, typical receipt | 91 s | 116 s (7.3 GiB) | 898 s (4.6 GiB) |
+| Step 3 | 417 s | 524 s (9.4 GiB) | 3,717 s (9.2 GiB) |
+| Step 2 (two loops) | 459 s | 602 s (11.9 GiB) | |
+| Step 1, handoff (incl. harness decoding) | 1,097 s | 1,479 s (9.4 GiB) | |
+| Step 1, finality only (same) | 992 s | 1,337 s (9.4 GiB) | |
+| Inclusion, 300-log receipt | 1,325 s | 1,797 s (9.4 GiB) | |
+
+- **M2 Air** (4P + 4E cores, macOS 26.3.1, mains, CPU prover): all six, 98 min, 1.26–1.36x
+  the desktop. Peak RSS up to 12.2 GiB on step 2 against 9.2 GiB on Linux; 16 GB is the
+  practical minimum, 8 GB is not enough.
+- **T470** (2017, 2 cores / 4 threads, Ubuntu 26.04, mains, desktop session in use): 2 of 6,
+  about 929 s per 2^20 segment, about 9x the desktop. The rest would take about 11 h.
+
 ## Deposit-log inclusion (the RFP-022 user's step)
 
 `methods/inclusion`: Merkle-Patricia proof of a receipt under a finalized block's
@@ -190,5 +211,4 @@ feature routes it through RISC Zero's accelerated Keccak: about 9x cheaper, same
 ## Still not measured
 
 A LEZ 0.4 program shell around each step (account I/O, instruction decoding): estimated from
-Sextant's numbers at about 0.8M across the three steps. Proving on a mid-range laptop.
-Succinct receipt size. Storage-slot and account proofs (only receipt logs here).
+Sextant's numbers at about 0.8M across the three steps. Succinct receipt size. Storage-slot and account proofs (only receipt logs here).
