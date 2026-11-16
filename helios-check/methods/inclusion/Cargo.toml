@@ -14,6 +14,6 @@ risc0-zkvm.workspace = true
 alloy-primitives = { workspace = true, features = ["tiny-keccak"] }
 alloy-trie = "0.9"
 alloy-rlp = "0.3"
-alloy-consensus = { version = "2.5", default-features = false }
-alloy-eips = { version = "2.5", default-features = false }
+alloy-consensus = { version = "2.1", default-features = false }
+alloy-eips = { version = "2.1", default-features = false }
 serde.workspace = true
