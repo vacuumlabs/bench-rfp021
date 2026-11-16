@@ -92,7 +92,7 @@ which replaces the store's signing committee, with 0, 17 and 170 members not sig
 the most the 2/3 supermajority allows (342 × 3 ≥ 512 × 2). Helios accepts every re-signed
 update natively, and all three steps run, with step 3 accepting the signature. Step 1 also
 refuses wrong supplied keys: another member's key, a point off the curve, one key too few and
-one too many. Raw: `results/nonsigners.csv`.
+one too many. Raw: `results/desktop-ryzen-9800x3d/nonsigners.csv` (re-run 2026-11-16 at the current commit, same cycle counts).
 
 Step 1 runs two ways:
 - **Keys decompressed**, as before: the committee's aggregate key and each non-signer's key
