@@ -32,46 +32,32 @@ v0.4.0-rc3 uses. No Logos/LEZ knowledge is needed to run anything here.
    cargo build --release -p helios-check     # first build takes several minutes
    ```
 
-## Task 1 (main): run the benchmark on your laptop
+## Results at a glance
 
-RFP-021 asks for proving times on "a mid-range laptop and on the lowest specification
-the team declares as supported". We only have desktop numbers.
+All numbers are explained, with their raw CSVs and logs, in `helios-check/RESULTS.md`.
+
+| What | Result |
+|---|---|
+| Helios as-is in the zkVM | 33–43M cycles per update |
+| Our three steps (patched Helios + blst), mainnet Fulu data | step 1 3.91M (5.70M at 170 non-signers, 2.34M finality only), step 2 3.27M, step 3 3.58M |
+| Equivalence: unpatched Helios, patched Helios, our steps | same verdict and error on 251 valid and tampered updates |
+| Real proving, desktop (Ryzen 7 9800X3D, 8 cores) | about 100 s per 2^20-cycle segment, 9.2 GiB peak |
+| Real proving, MacBook Air M2 (24 GB) | 1.26–1.36x the desktop |
+| Real proving, ThinkPad T470 (2 cores) | about 9x the desktop (2 of 6 inputs) |
+| Deposit-log inclusion | 69k cycles in a typical receipt, 1.68M in a 300-log one |
+
+Still to be measured (see the end of `RESULTS.md`): a LEZ 0.4 program shell around each step,
+succinct receipt size, and storage-slot and account proofs.
+
+## Reproduce
 
 ```
 cd helios-check
 ./target/release/helios-check step-inputs fixtures/mainnet-now results/inputs
-./scripts/prove_all.sh          # real proving, about 1-2 hours; keep the laptop plugged in
+./scripts/prove_all.sh          # real proving, about 1-2 hours on a desktop
+cargo test -p equivalence -- --nocapture   # the equivalence test, no zkVM
 ```
 
 `prove_all.sh` proves six inputs one at a time, each in its own process, and writes
 `results/proving.csv` (time and peak memory per proof) and a log per proof in
-`results/logs/`. The first line (deposit-log inclusion) takes about 1.5 minutes on our
-desktop; if that works, the rest will.
-
-**Done when:** copy `results/*.csv` into `results/<your-machine>/` (for example
-`results/thinkpad-t14-32gb/`), add a `MACHINE.txt` there with CPU model, cores, RAM, OS,
-and whether it ran on battery or mains, and commit that folder. If a step fails (for
-example out of memory), commit the log from `results/logs/` instead; that is a result too.
-
-## Task 2 (optional): equivalence test for the patch
-
-Show the patched and unpatched Helios give the same verdict. Run `verify_update` /
-`verify_finality_update` from both on Helios's own spec vectors
-(`helios-patched/ethereum/consensus-core/testdata/`) and on our fixtures, plus tampered
-copies: a changed signature byte, a flipped participation bit, a wrong proof branch node,
-a swapped next committee. Assert identical accept/reject for every case. Plain Rust, no zkVM.
-Put it in a new crate `helios-check/equivalence/`.
-
-**Done when:** `cargo test -p equivalence` passes and lists the cases.
-
-## Task 3 (optional): step 1 with many non-signers
-
-Today's Ethereum mainnet has 0-2 non-signers per update, so step 1 costs about 4.4M cycles.
-At the 2/3 participation floor (170 non-signers) each non-signer adds about 0.455M, so step 1
-would not fit LEZ's 10M-cycle transaction limit. Fix: the submitter supplies each non-signer's
-key uncompressed, and the guest only checks it is on the curve and compresses to the committed
-48 bytes (no square root, no subgroup check). Add this to `methods/steps/src/bin/step1.rs` and
-measure step 1 at 0, 17 and 170 synthetic non-signers (clear bits in a copy of the update; the
-signature will then fail in step 3, which is fine for counting step 1 cycles).
-
-**Done when:** a small table of step 1 cycles vs non-signers, added to `RESULTS.md`.
+`results/logs/`. Machine results are kept under `results/<machine>/`.

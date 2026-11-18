@@ -28,7 +28,7 @@ Breakdown (in-guest counters):
 | Next-committee SSZ root (handoff only) | 8.01M (generic `tree_hash`) | 1.25M direct over the key bytes, same root (asserted) |
 | Everything else in Helios's rules | 0.37M (finality) / 0.43M (handoff) | same code |
 
-## Helios rules + blst, split like Sextant (estimate from the counters above)
+## Helios rules + blst, split into three transactions (estimate from the counters above)
 
 | Step | Contents | Cycles, handoff | Cycles, finality only |
 |---|---|---|---|
@@ -39,11 +39,11 @@ Breakdown (in-guest counters):
 
 Each step is well under the 10M per-transaction cap. These are guest-function cycles
 and exclude a LEZ program's own overhead (account reads/writes, instruction
-decoding), so compare with Sextant's guest-level 11.2M / 12.6M, not its 13.4M gas.
+decoding); that shell is listed under "Still not measured" below.
 
 ## What this shows
 
-- **Helios as-is does not work for us:** 33–43M cycles, about 3x Sextant. Almost all of it
+- **Helios as-is does not work for us:** 33–43M cycles, about 3x the split above. Almost all of it
   is the zkcrypto pairing library plus a redundant subgroup check, and the generic SSZ
   hashing of the next committee.
 - **Helios's rules are cheap** (0.4M) and can be reused. The BLS step must use RISC Zero's
@@ -53,10 +53,10 @@ decoding), so compare with Sextant's guest-level 11.2M / 12.6M, not its 13.4M ga
   checks without the signature, (2) take a precomputed committee root. Both are small and
   could be offered upstream to a16z/helios.
 - **Dependencies are fine:** `methods/compat` builds Helios, blst and LEZ v0.4.0-rc3 `lee_core`
-  together into one RISC Zero guest (444 KB ELF), answering Sextant's dependency-tree concern.
+  together into one RISC Zero guest (444 KB ELF), so the dependency trees are compatible.
 - **Non-signers:** today's mainnet has 0–2 per update (last 10 periods), so cost is flat.
   Decompressing their keys, step 1 grows by 0.45M per non-signer, to 80.6M at the 2/3 floor
-  (170 non-signers). With the keys supplied uncompressed (what Sextant and Affidavit do), it
+  (170 non-signers). With the keys supplied uncompressed, it
   stays at 5.7M; see "Step 1 with many non-signers" below.
 
 
@@ -163,8 +163,7 @@ crates pinned to LEZ v0.4.0-rc3's lock (risc0-zkvm 3.0.5, circuits 4.0.x). Raw: 
 
 Proving runs at about 97 s per 2^20-cycle segment, linearly. Without the harness decoding,
 step 1 is about 5 segments: roughly **480 s** (derived, not measured). Peak memory is set by
-the segment size (2^20), not by the program, so it stays at about 9.2 GiB. For reference,
-Sextant reports 691 s / 544 s / 477 s for its three steps on an Apple M4 Pro CPU.
+the segment size (2^20), not by the program, so it stays at about 9.2 GiB.
 
 Receipt sizes in the CSV are composite receipts (about 280 KB per segment). A transaction
 would carry a succinct receipt instead (about 225 KB per LEZ's cycle_bench); not measured here.
@@ -210,5 +209,5 @@ feature routes it through RISC Zero's accelerated Keccak: about 9x cheaper, same
 
 ## Still not measured
 
-A LEZ 0.4 program shell around each step (account I/O, instruction decoding): estimated from
-Sextant's numbers at about 0.8M across the three steps. Succinct receipt size. Storage-slot and account proofs (only receipt logs here).
+A LEZ 0.4 program shell around each step (account I/O, instruction decoding): our rough
+estimate is about 0.8M across the three steps, to be measured in M1. Succinct receipt size. Storage-slot and account proofs (only receipt logs here).

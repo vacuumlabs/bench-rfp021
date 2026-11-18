@@ -16,6 +16,6 @@ serde.workspace = true
 serde_json.workspace = true
 sha2 = "0.9"
 tree_hash = "0.10"
-# RISC Zero's accelerated fork of supranational blst (what Sextant uses for every curve operation).
+# RISC Zero's accelerated fork of supranational blst.
 blst = "0.3.16"
 sha2-010 = { package = "sha2", version = "0.10" }
